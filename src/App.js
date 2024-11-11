@@ -1,24 +1,32 @@
-import logo from './logo.svg';
-import './App.css';
+// src/App.js
+import React from 'react';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import TaxFormLanding from './pages/TaxFormLanding';
+import IncomeForm from './pages/IncomeForm';
+import CostsForm from './pages/CostsForm';
+import ExpensesForm from './pages/ExpensesForm';
+import PartnersForm from './pages/PartnersForm';
+import BalanceForm from './pages/BalanceForm';
+import CompanyDetailsForm from './pages/CompanyDetailsForm';
+import TransactionsForm from './pages/TransactionsForm';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <AnimatePresence mode="wait">
+        <Routes>
+          <Route path="/" element={<TaxFormLanding />} />
+          <Route path="/income" element={<IncomeForm />} />
+          <Route path="/costs" element={<CostsForm />} />
+          <Route path="/expenses" element={<ExpensesForm />} />
+          <Route path="/partners" element={<PartnersForm />} />
+          <Route path="/balance" element={<BalanceForm />} />
+          <Route path="/company-details" element={<CompanyDetailsForm />} />
+          <Route path="/transactions" element={<TransactionsForm />} />
+        </Routes>
+      </AnimatePresence>
+    </Router>
   );
 }
 
