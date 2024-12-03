@@ -10,6 +10,7 @@ import PartnersForm from './pages/PartnersForm';
 import BalanceForm from './pages/BalanceForm';
 import CompanyDetailsForm from './pages/CompanyDetailsForm';
 import TransactionsForm from './pages/TransactionsForm';
+import TaxQuestionsForm from './pages/TaxQuestionsForm';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/income" element={<IncomeForm />} />
           <Route path="/costs" element={<CostsForm />} />
           <Route path="/expenses" element={<ExpensesForm />} />
+          <Route path="/TaxQuestions" element={<TaxQuestionsForm />} />
           <Route path="/partners" element={<PartnersForm />} />
           <Route path="/balance" element={<BalanceForm />} />
           <Route path="/company-details" element={<CompanyDetailsForm />} />

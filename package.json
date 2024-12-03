@@ -1,33 +1,68 @@
 {
   "name": "form-application",
   "version": "0.1.0",
-  "homepage": "https://anjuba1017.github.io/",
   "private": true,
+  "main": "public/electron.js",
+  "homepage": "https://anjuba1017.github.io/form",
   "dependencies": {
+    "@tanstack/react-virtual": "^3.10.9",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "country-state-city": "^3.2.1",
     "framer-motion": "^11.11.11",
+    "libphonenumber-js": "^1.11.14",
     "lucide-react": "^0.454.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-helmet": "^6.1.0",
     "react-router-dom": "^6.27.0",
     "react-scripts": "5.0.1",
+    "react-select": "^5.8.3",
+    "react-select-country-list": "^2.2.3",
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^24.13.3",
     "gh-pages": "^6.2.0",
     "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.14"
+    "tailwindcss": "^3.4.14",
+    "wait-on": "^7.2.0"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "electron:start": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:package:win": "npm run build && electron-builder -w --config.asar=false"
+  },
+  "build": {
+    "appId": "com.formapplication.app",
+    "productName": "Tax Form Application",
+    "files": [
+      "build/**/*",
+      "public/electron.js"
+    ],
+    "directories": {
+      "buildResources": "public/assets",
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   },
   "eslintConfig": {
     "extends": [

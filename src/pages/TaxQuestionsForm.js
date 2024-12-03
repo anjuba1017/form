@@ -1,10 +1,134 @@
-// src/pages/TaxQuestionsForm.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Paperclip } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowLeft, ArrowRight, Paperclip, HelpCircle, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import logo from '../assets/images/logo.png';
 
+// Helper Components
+const Tooltip = ({ text }) => (
+  <div className="relative group">
+    <HelpCircle 
+      size={20} 
+      className="text-red-400 cursor-help"
+      aria-label="Help information"
+    />
+    <div
+      role="tooltip" 
+      className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 sm:w-80 p-3 bg-gray-800 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-10"
+    >
+      {text}
+      <div className="absolute left-1/2 -bottom-1 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+    </div>
+  </div>
+);
+
+const RadioOption = ({ checked, onChange, label, description, name, value }) => (
+  <label 
+    className={`block p-4 rounded-lg border cursor-pointer transition-all
+      ${checked ? 'bg-teal-50 border-teal-500' : 'border-gray-200 hover:bg-gray-50'}`}
+  >
+    <div className="flex items-center">
+      <input
+        type="radio"
+        name={name}
+        checked={checked}
+        onChange={() => onChange(value)}
+        className="w-4 h-4 text-teal-500 border-gray-300 focus:ring-teal-500"
+      />
+      <div className="ml-3">
+        <span className={`font-medium ${checked ? 'text-teal-900' : 'text-gray-900'}`}>
+          {label}
+        </span>
+        <p className={`text-sm ${checked ? 'text-teal-700' : 'text-gray-500'}`}>
+          {description}
+        </p>
+      </div>
+    </div>
+  </label>
+);
+
+const FileUpload = ({ id, file, onFileChange, label }) => {
+  const handleFileSelect = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile && selectedFile.size <= 5 * 1024 * 1024) { // 5MB limit
+      onFileChange(selectedFile);
+    } else {
+      alert('File size should be less than 5MB');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type="file"
+          id={id}
+          onChange={handleFileSelect}
+          className="hidden"
+          accept=".pdf,.jpg,.jpeg,.png"
+        />
+        <label
+          htmlFor={id}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+        >
+          <Paperclip size={16} className="mr-2" />
+          {file ? file.name : 'Upload file'}
+        </label>
+        {file && (
+          <button
+            onClick={() => onFileChange(null)}
+            className="ml-2 p-1 text-gray-400 hover:text-red-500 transition-colors"
+            aria-label="Remove file"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-gray-500">
+        Supported formats: PDF, JPG, PNG (max 5MB)
+      </p>
+    </div>
+  );
+};
+
+const MoneyInput = ({ label, value, onChange, onBlur }) => (
+  <div className="space-y-2">
+    <label className="block text-sm font-medium text-gray-700">
+      {label}
+    </label>
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        className="w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
+        aria-label={`${label} in dollars`}
+      />
+    </div>
+  </div>
+);
+
+// Utility functions
+const formatNumber = (value) => {
+  const cleanValue = value.replace(/,/g, '');
+  if (!cleanValue || isNaN(cleanValue)) return '0.00';
+  
+  return Number(cleanValue).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
+const unformatNumber = (value) => {
+  return value.replace(/,/g, '');
+};
+
+// Main Component
 const TaxQuestionsForm = () => {
   const navigate = useNavigate();
   
@@ -21,7 +145,6 @@ const TaxQuestionsForm = () => {
     }
   });
 
-  // Summary state
   const [summary, setSummary] = useState({
     totalRevenue: '0.00',
     totalCosts: '0.00',
@@ -31,61 +154,48 @@ const TaxQuestionsForm = () => {
 
   const handleAmountChange = (field, value) => {
     let numericValue = value.replace(/[^0-9.]/g, '');
-    
-    if (numericValue.includes('.')) {
-      const [whole, decimal] = numericValue.split('.');
-      numericValue = whole + '.' + (decimal || '').slice(0, 2);
+    const parts = numericValue.split('.');
+    if (parts.length > 2) {
+      numericValue = parts[0] + '.' + parts.slice(1).join('');
     }
-  
+
     setFormData(prev => ({
       ...prev,
       [field]: {
         ...prev[field],
-        amount: numericValue || '0.00'
+        amount: numericValue
       }
     }));
-  
-  // Update total expenses in summary
-  setSummary(prev => {
-    const stateTaxAmount = field === 'stateTax' ? 
-      parseFloat(numericValue) || 0 : 
-      parseFloat(formData.stateTax.amount) || 0;
-    
-    const form1099Amount = field === 'form1099' ? 
-      parseFloat(numericValue) || 0 : 
-      parseFloat(formData.form1099.amount) || 0;
 
+    updateSummary();
+  };
+
+  const handleAmountBlur = (field) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: {
+        ...prev[field],
+        amount: formatNumber(prev[field].amount)
+      }
+    }));
+
+    updateSummary();
+  };
+
+  const updateSummary = () => {
+    const stateTaxAmount = parseFloat(unformatNumber(formData.stateTax.amount)) || 0;
+    const form1099Amount = parseFloat(unformatNumber(formData.form1099.amount)) || 0;
     const totalExpenses = stateTaxAmount + form1099Amount;
 
-    return {
+    setSummary(prev => ({
       ...prev,
-      totalExpenses: totalExpenses.toFixed(2),
-      netIncome: (
-        parseFloat(prev.totalRevenue) - 
-        parseFloat(prev.totalCosts) - 
+      totalExpenses: formatNumber(totalExpenses.toString()),
+      netIncome: formatNumber((
+        parseFloat(unformatNumber(prev.totalRevenue)) - 
+        parseFloat(unformatNumber(prev.totalCosts)) - 
         totalExpenses
-      ).toFixed(2)
-    };
-  });
-  };
-
-
-  const handleFileChange = (field, file) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: {
-        ...prev[field],
-        file: file
-      }
+      ).toString())
     }));
-  };
-
-  const handlePrevious = () => {
-    navigate('/costs');
-  };
-  
-  const handleNext = () => {
-    navigate('/expenses');
   };
 
   return (
@@ -97,273 +207,231 @@ const TaxQuestionsForm = () => {
       className="min-h-screen bg-white flex flex-col"
     >
       {/* Logo Section */}
-      <div className="p-8 border-b">
-        <div className="w-12 h-12">
+      <header className="p-4 sm:p-8 border-b">
+        <div className="w-10 h-10 sm:w-12 sm:h-12">
           <img src={logo} alt="Company Logo" className="w-full h-full object-contain" />
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="flex flex-1 w-full max-w-7xl mx-auto px-8 py-12 gap-8">
-        {/* Left Column - Form */}
-        <div className="w-1/2">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">
-            What expenses did your company have?
-          </h1>
+      <div className="flex-1">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column - Form */}
+            <div className="space-y-8">
+              <div className="space-y-2">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  Did your company have related expenses?
+                </h1>
+                <p className="text-base sm:text-lg text-gray-600">
+                 Please add your information in the following fields:.
+                </p>
+              </div>
 
-          {/* State/Local Tax Section */}
-          <div className="mb-12">
-            <h2 className="text-lg font-semibold mb-4">
-              Did you pay any state or local tax?
-            </h2>
-            
-            <div className="space-y-3">
-              <label className={`block p-4 rounded-lg border cursor-pointer transition-all
-                ${formData.stateTax.paid === true ? 'bg-teal-50 border-teal-500' : 'hover:bg-gray-50'}`}
-              >
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    name="stateTax"
+              {/* State/Local Tax Section */}
+              <div className="space-y-4">
+                <div className="flex items-start gap-2">
+                  <h2 className="text-lg font-semibold">
+                    Did you pay any state or local tax?
+                  </h2>
+                  <Tooltip text="State and local taxes are separate from federal taxes and are paid to your state or local government. These may include state income tax, sales tax, or other local business taxes." />
+                </div>
+
+                <div className="space-y-3">
+                  <RadioOption
                     checked={formData.stateTax.paid === true}
-                    onChange={() => setFormData(prev => ({
+                    onChange={(value) => setFormData(prev => ({
                       ...prev,
-                      stateTax: { ...prev.stateTax, paid: true }
+                      stateTax: { ...prev.stateTax, paid: value }
                     }))}
-                    className="w-4 h-4 text-teal-500 border-gray-300 focus:ring-teal-500"
-                  />
-                  <div className="ml-3">
-                    <span className={`font-medium ${formData.stateTax.paid === true ? 'text-teal-900' : 'text-gray-900'}`}>
-                      Yes
-                    </span>
-                    <p className={`text-sm ${formData.stateTax.paid === true ? 'text-teal-700' : 'text-gray-500'}`}>
-                      I did pay taxes last year
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label className={`block p-4 rounded-lg border cursor-pointer transition-all
-                ${formData.stateTax.paid === false ? 'bg-teal-50 border-teal-500' : 'hover:bg-gray-50'}`}
-              >
-                <div className="flex items-center">
-                  <input
-                    type="radio"
+                    label="Yes"
+                    description="I did pay taxes last year"
                     name="stateTax"
+                    value={true}
+                  />
+
+                  <RadioOption
                     checked={formData.stateTax.paid === false}
-                    onChange={() => setFormData(prev => ({
+                    onChange={(value) => setFormData(prev => ({
                       ...prev,
-                      stateTax: { ...prev.stateTax, paid: false }
+                      stateTax: { ...prev.stateTax, paid: value }
                     }))}
-                    className="w-4 h-4 text-teal-500 border-gray-300 focus:ring-teal-500"
+                    label="No"
+                    description="I did not pay any tax last year"
+                    name="stateTax"
+                    value={false}
                   />
-                  <div className="ml-3">
-                    <span className={`font-medium ${formData.stateTax.paid === false ? 'text-teal-900' : 'text-gray-900'}`}>
-                      No
-                    </span>
-                    <p className={`text-sm ${formData.stateTax.paid === false ? 'text-teal-700' : 'text-gray-500'}`}>
-                      I did not pay any tax last year
-                    </p>
-                  </div>
-                </div>
-              </label>
 
-              {/* Conditional Fields for State Tax */}
-              {formData.stateTax.paid === true && (
-                <div className="ml-7 space-y-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      If yes, how much did you pay?
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                      <input
-                        type="text"
-                        value={formData.stateTax.amount}
-                        onChange={(e) => handleAmountChange('stateTax', e.target.value)}
-                        className="w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Choose the file to upload the payment receipt of your taxes
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        onChange={(e) => handleFileChange('stateTax', e.target.files[0])}
-                        className="hidden"
-                        id="stateTaxFile"
-                      />
-                      <label
-                        htmlFor="stateTaxFile"
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+                  <AnimatePresence>
+                    {formData.stateTax.paid === true && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="ml-7 space-y-4 pt-4"
                       >
-                        <Paperclip size={16} className="mr-2" />
-                        {formData.stateTax.file ? formData.stateTax.file.name : 'Upload file'}
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+                        <MoneyInput
+                          label="If yes, how much did you pay?"
+                          value={formData.stateTax.amount}
+                          onChange={(e) => handleAmountChange('stateTax', e.target.value)}
+                          onBlur={() => handleAmountBlur('stateTax')}
+                        />
 
-          {/* Form 1099 Section */}
-          <div className="mb-12">
-            <h2 className="text-lg font-semibold mb-4">
-              Did you contract a service within the U.S? Form 1099
-            </h2>
-            
-            <div className="space-y-3">
-              <label className={`block p-4 rounded-lg border cursor-pointer transition-all
-                ${formData.form1099.contracted === true ? 'bg-teal-50 border-teal-500' : 'hover:bg-gray-50'}`}
-              >
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    name="form1099"
+                        <FileUpload
+                          id="stateTaxFile"
+                          file={formData.stateTax.file}
+                          onFileChange={(file) => setFormData(prev => ({
+                            ...prev,
+                            stateTax: { ...prev.stateTax, file }
+                          }))}
+                          label="Upload the payment receipt of your taxes"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Form 1099 Section */}
+              <div className="space-y-4">
+                <div className="flex items-start gap-2">
+                  <h2 className="text-lg font-semibold">
+                    Did you make any payment in the last year that required you to file the 1099 form?
+                  </h2>
+                  <Tooltip text="Form 1099 is required when you pay $600 or more to a US-based independent contractor or service provider in a calendar year. This includes freelancers, consultants, or other non-employee services." />
+                </div>
+
+                <div className="space-y-3">
+                  <RadioOption
                     checked={formData.form1099.contracted === true}
-                    onChange={() => setFormData(prev => ({
+                    onChange={(value) => setFormData(prev => ({
                       ...prev,
-                      form1099: { ...prev.form1099, contracted: true }
+                      form1099: { ...prev.form1099, contracted: value }
                     }))}
-                    className="w-4 h-4 text-teal-500 border-gray-300 focus:ring-teal-500"
-                  />
-                  <div className="ml-3">
-                    <span className={`font-medium ${formData.form1099.contracted === true ? 'text-teal-900' : 'text-gray-900'}`}>
-                      Yes
-                    </span>
-                    <p className={`text-sm ${formData.form1099.contracted === true ? 'text-teal-700' : 'text-gray-500'}`}>
-                      I contracted services
-                    </p>
-                  </div>
-                </div>
-              </label>
-
-              <label className={`block p-4 rounded-lg border cursor-pointer transition-all
-                ${formData.form1099.contracted === false ? 'bg-teal-50 border-teal-500' : 'hover:bg-gray-50'}`}
-              >
-                <div className="flex items-center">
-                  <input
-                    type="radio"
+                    label="Yes"
+                    description="I contracted services"
                     name="form1099"
-                    checked={formData.form1099.contracted === false}
-                    onChange={() => setFormData(prev => ({
-                      ...prev,
-                      form1099: { ...prev.form1099, contracted: false }
-                    }))}
-                    className="w-4 h-4 text-teal-500 border-gray-300 focus:ring-teal-500"
+                    value={true}
                   />
-                  <div className="ml-3">
-                    <span className={`font-medium ${formData.form1099.contracted === false ? 'text-teal-900' : 'text-gray-900'}`}>
-                      No
-                    </span>
-                    <p className={`text-sm ${formData.form1099.contracted === false ? 'text-teal-700' : 'text-gray-500'}`}>
-                      No, I did not.
-                    </p>
-                  </div>
-                </div>
-              </label>
 
-              {/* Conditional Fields for Form 1099 */}
-              {formData.form1099.contracted === true && (
-                <div className="ml-7 space-y-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      If yes, how much did you pay?
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                      <input
-                        type="text"
-                        value={formData.form1099.amount}
-                        onChange={(e) => handleAmountChange('form1099', e.target.value)}
-                        className="w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500"
-                      />
-                    </div>
-                  </div>
+                  <RadioOption
+                    checked={formData.form1099.contracted === false}
+                    onChange={(value) => setFormData(prev => ({
+                      ...prev,
+                      form1099: { ...prev.form1099, contracted: value }
+                    }))}
+                    label="No"
+                    description="No, I did not"
+                    name="form1099"
+                    value={false}
+                  />
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Choose the file to upload form
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        onChange={(e) => handleFileChange('form1099', e.target.files[0])}
-                        className="hidden"
-                        id="form1099File"
-                      />
-                      <label
-                        htmlFor="form1099File"
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+                  <AnimatePresence>
+                    {formData.form1099.contracted === true && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="ml-7 space-y-4 pt-4"
                       >
-                        <Paperclip size={16} className="mr-2" />
-                        {formData.form1099.file ? formData.form1099.file.name : 'Upload file'}
-                      </label>
-                    </div>
+                        <MoneyInput
+                          label="If yes, how much did you pay?"
+                          value={formData.form1099.amount}
+                          onChange={(e) => handleAmountChange('form1099', e.target.value)}
+                          onBlur={() => handleAmountBlur('form1099')}
+                        />
+
+                        <FileUpload
+                          id="form1099File"
+                          file={formData.form1099.file}
+                          onFileChange={(file) => setFormData(prev => ({
+                            ...prev,
+                            form1099: { ...prev.form1099, file }
+                          }))}
+                          label="Upload your 1099 form"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Progress and Navigation */}
+              <div className="pt-6">
+                <div className="flex items-center mb-4">
+                  <div className="text-sm text-gray-500">Step 4 of 9</div>
+                  <div className="ml-4 flex-1 h-2 bg-gray-200 rounded-full">
+                    <motion.div
+                      className="h-full bg-teal-500 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: "44.44%" }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                    />
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Progress and Navigation */}
-          <div className="mt-12">
-            <div className="flex items-center mb-4">
-              <div className="text-sm text-gray-500">Step 3 of 4</div>
-              <div className="ml-4 flex-1 h-2 bg-gray-200 rounded-full">
-                <div className="w-3/4 h-full bg-teal-500 rounded-full"></div>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button 
+                    onClick={() => navigate('/costs')}
+                    className="w-full sm:w-auto px-6 py-2 rounded-lg bg-purple-600 text-white flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors"
+                  >
+                    <ArrowLeft size={20} />
+                    Previous
+                  </button>
+                  <button 
+                    onClick={() => navigate('/expenses')}
+                    className="w-full sm:w-auto px-6 py-2 rounded-lg bg-teal-500 text-white flex items-center justify-center gap-2 hover:bg-teal-600 transition-colors"
+                  >
+                    Next
+                    <ArrowRight size={20} />
+                  </button>
+                  </div>
               </div>
             </div>
-            
-            <div className="flex gap-4">
-              <button 
-                onClick={handlePrevious}
-                className="px-6 py-2 rounded-lg bg-purple-600 text-white flex items-center gap-2 hover:bg-purple-700 transition-colors"
-              >
-                <ArrowLeft size={20} />
-                Previous
-              </button>
-              <button 
-                onClick={handleNext}
-                className="px-6 py-2 rounded-lg bg-teal-500 text-white flex items-center gap-2 hover:bg-teal-600 transition-colors"
-              >
-                Next
-                <ArrowRight size={20} />
-              </button>
-            </div>
-          </div>
-        </div>
 
-        {/* Right Column - Summary */}
-        <div className="w-1/2 bg-gray-50 p-8 rounded-lg">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">
-            2023 SUMMARY NET INCOME
-          </h2>
+            {/* Right Column - Summary */}
+            <div className="w-full">
+              <div className="lg:sticky lg:top-6" style={{ height: 'fit-content' }}>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 text-center">
+                    2024 NET INCOME SUMMARY
+                  </h2>
 
-          <div className="space-y-4">
-            <div className="flex justify-between p-4 bg-white rounded-lg">
-              <span className="font-medium">TOTAL REVENUE</span>
-              <span className="font-medium">${summary.totalRevenue}</span>
-            </div>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">TOTAL REVENUE</div>
+                      <div className="text-2xl font-bold text-gray-700">${summary.totalRevenue}</div>
+                    </div>
 
-            <div className="flex justify-between p-4 bg-white rounded-lg">
-              <span className="font-medium">TOTAL COSTS</span>
-              <span className="font-medium">${summary.totalCosts}</span>
-            </div>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm font-medium text-gray-600 mb-1">TOTAL COSTS</div>
+                      <div className="text-2xl font-bold text-gray-700">${summary.totalCosts}</div>
+                    </div>
 
-            <div className="flex justify-between p-4 bg-teal-50 rounded-lg">
-              <span className="font-medium">TOTAL EXPENSES</span>
-              <span className="font-medium">${summary.totalExpenses}</span>
-            </div>
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(65, 191, 120, 0.19)' }}>
+                      <div className="text-sm font-medium text-gray-600 mb-1">TOTAL EXPENSES</div>
+                      <div className="text-2xl font-bold text-teal-700">${summary.totalExpenses}</div>
+                    </div>
 
-            <div className="flex justify-between p-4 bg-teal-50 rounded-lg mt-8">
-              <span className="font-medium">NET INCOME</span>
-              <span className="font-medium">${summary.netIncome}</span>
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(65, 191, 120, 0.19)' }}>
+                      <div className="text-sm font-medium text-gray-600 mb-1">NET INCOME</div>
+                      <div className="text-2xl font-bold text-teal-700">${summary.netIncome}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <div className="text-sm text-gray-500">
+                      Last updated: {new Date().toLocaleString([], {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
